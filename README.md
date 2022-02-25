@@ -8,7 +8,7 @@
     
 - **Context-based dynamic payloads generation**
     
-    For the given URL : `[https://host.com/?fileURL=https://authorizedhost.com](https://host.com/?fileURL=https://whitelistedhost.comn)`, **autoSSRF** would recognize *authorizedhost.com* as the potentially white-listed host for the web-application, and generate payloads dynamically based on that, attempting to bypass the white-list validation. 
+    For the given URL : `https://host.com/?fileURL=https://authorizedhost.com`, **autoSSRF** would recognize *authorizedhost.com* as a potentially white-listed host for the web-application, and generate payloads dynamically based on that, attempting to bypass the white-listing validation. 
     It would result to interesting payloads such as : `http://authorizedhost.attacker.com`, `http://authorizedhost%252F@attacker.com`, etc.
     
 
