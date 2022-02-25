@@ -7,6 +7,7 @@ import os
 parser = argparse.ArgumentParser()
 parser.add_argument("--file", "-f", type=str, required=False, help= 'file of all URLs to be tested against SSRF')
 parser.add_argument("--url", "-u", type=str, required=False, help= 'url to be tested against SSRF')
+parser.add_argument("--output", "-o", action='store_true', help='output file path')
 parser.add_argument("--verbose", "-v", action='store_true', help='activate verbose mode')
 
 args = parser.parse_args()
@@ -14,7 +15,13 @@ args = parser.parse_args()
 if not (args.file or args.url):
     parser.error('No input selected: Please add --file or --url as arguments.')
 
-outputFile = open("output/ssrf-result.txt", "a")
+if not os.path.isdir('output'):
+    os.system("mkdir output")
+
+if args.output:
+    outputFile = open(args.output, "a")
+else:
+    outputFile = open("output/ssrf-result.txt", "a")
 
 regexMultipleParams = '(?<=(access|admin|dbg|debug|edit|grant|test|alter|clone|create|delete|disable|enable|exec|execute|load|make|modify|rename|reset|shell|toggle|adm|root|cfg|dest|redirect|uri|path|continue|url|window|next|data|reference|site|html|val|validate|domain|callback|return|page|feed|host|port|to|out|view|dir|show|navigation|open|file|document|folder|pg|php_path|style|doc|img|filename)=)(.*)(?=&)'
 
