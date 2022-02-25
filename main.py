@@ -5,9 +5,9 @@ import time
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--file", "-f", type=str, required=False, help= 'File of all URLs to be tested against SSRF.')
-parser.add_argument("--url", "-u", type=str, required=False, help= 'Url to be tested against SSRF.')
-parser.add_argument("--verbose", "-v", action='store_true', help='Activate verbose mode for the tool.')
+parser.add_argument("--file", "-f", type=str, required=False, help= 'file of all URLs to be tested against SSRF')
+parser.add_argument("--url", "-u", type=str, required=False, help= 'url to be tested against SSRF')
+parser.add_argument("--verbose", "-v", action='store_true', help='activate verbose mode')
 
 args = parser.parse_args()
 
