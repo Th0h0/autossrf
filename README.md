@@ -4,7 +4,7 @@
 
 - **Smart fuzzing on relevant SSRF GET parameters**
     
-    When fuzzing, **autoSSRF** only focuses on the common parameters related to SSRF (`?url=`, `?uri=`, ..) and doesn’t interfere with everything else. This ensures that the original URL is still correctly understood by the tested web-application, something that might doesn’t happen with a tool blindly spraying every query parameters.
+    When fuzzing, **autoSSRF** only focuses on the common parameters related to SSRF (`?url=`, `?uri=`, ..) and doesn’t interfere with everything else. This ensures that the original URL is still correctly understood by the tested web-application, something that might doesn’t happen with a tool which is blindly spraying query parameters.
     
 - **Context-based dynamic payloads generation**
     
