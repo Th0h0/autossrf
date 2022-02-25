@@ -1,6 +1,6 @@
 ### Summary
 
-**autoSSRF** is your best ally for identifying SSRF vulnerabilities at scale. Different from other ssrf automation tools, **autoSSRF** comes with the two following original features :
+**autoSSRF** is your best ally for identifying SSRF vulnerabilities at scale. Different from other ssrf automation tools, the tool comes with the two following original features :
 
 - **Smart fuzzing on relevant SSRF GET parameters**
     
