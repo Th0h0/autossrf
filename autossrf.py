@@ -4,11 +4,15 @@ import requests
 import time
 import os
 
+FUZZ_PLACE_HOLDER = 'FUZZ-HERE'
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--file", "-f", type=str, required=False, help= 'file of all URLs to be tested against SSRF')
 parser.add_argument("--url", "-u", type=str, required=False, help= 'url to be tested against SSRF')
 parser.add_argument("--output", "-o", action='store_true', help='output file path')
+parser.add_argument("--oneshot", "-t", action='store_true', help='fuzz with only one basic payload - to be activated in case of time constraints')
 parser.add_argument("--verbose", "-v", action='store_true', help='activate verbose mode')
+
 
 args = parser.parse_args()
 
@@ -31,6 +35,8 @@ os.system("./tools/interactsh-client -pi 1 &> output/interaction-logs.txt &")
 time.sleep(3)
 
 extractInteractionServerURL = "(?<=] )([a-z0-9][a-z0-9][a-z0-9].*)"
+
+#Extract out-of-band host from Interactsh output
 
 interactionLogs = open("output/interaction-logs.txt", "r")
 fileContent = interactionLogs.read()
@@ -74,8 +80,12 @@ def fuzz_SSRF(url):
         return
     matchedElem = matchedElem.group()
     host = smart_extract_host(url , matchedElem)
-    payloadsList = generatePayloads(host, interactionServer)
-    url = url.replace(matchedElem, "???")
+
+    if args.oneshot:
+        payloadsList = [f"http://{interactionServer}"]
+    else:
+        payloadsList = generatePayloads(host, interactionServer)
+    url = url.replace(matchedElem, FUZZ_PLACE_HOLDER)
 
     for payload in payloadsList:
         fuzz_and_detect_with_payload("FUZZ", url, payload)
@@ -95,7 +105,7 @@ def fuzz_SSRF(url):
             print("\nNothing detected for the given URL.")
 
 def fuzz_and_detect_with_payload(type ,url, payload) :
-    fuzzedUrl = url.replace('???', payload)
+    fuzzedUrl = url.replace(FUZZ_PLACE_HOLDER, payload)
     if args.verbose:
         print(f"Testing payload: {payload}                                                          ", end="\r")
     requests.get(fuzzedUrl)
