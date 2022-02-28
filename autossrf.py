@@ -87,6 +87,10 @@ def fuzz_SSRF(url):
         payloadsList = generatePayloads(host, interactionServer)
     url = url.replace(matchedElem, FUZZ_PLACE_HOLDER)
 
+    if args.verbose:
+        print(f" + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +")
+        print(f"Starting fuzzing {url}")
+
     for payload in payloadsList:
         fuzz_and_detect_with_payload("FUZZ", url, payload)
 
