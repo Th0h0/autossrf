@@ -4,7 +4,8 @@ import requests
 import time
 import os
 
-FUZZ_PLACE_HOLDER = 'FUZZ-HERE'
+FUZZ_PLACE_HOLDER = '??????'
+TIMEOUT_DELAY = 1.75
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--file", "-f", type=str, required=False, help= 'file of all URLs to be tested against SSRF')
@@ -44,6 +45,17 @@ pastInteractionLogsSize = len(fileContent)
 interactionServer = regex.search(extractInteractionServerURL, fileContent).group()
 interactionLogs.close()
 
+
+def exception_verbose_message(exceptionType):
+    if args.verbose:
+        if exceptionType == "timeout":
+            print("\nTimeout detected... URL skipped")
+        elif exceptionType == "redirects":
+            print("\nToo many redirects... URL skipped")
+        elif exceptionType == "others":
+            print("\nRequest error... URL skipped")
+
+
 def generatePayloads(whitelistedHost, interactionHost):
     generated =[
     f"http://{interactionHost}",
@@ -72,37 +84,49 @@ def smart_extract_host(url, matchedElement):
 
     return extractedHost.group()
 
+def prepare_url_with_regex(url):
+
+    replacedURL = regex.sub(regexMultipleParams, FUZZ_PLACE_HOLDER, url, flags=regex.IGNORECASE)
+    if replacedURL == url: #If no match with multiparam regex
+        replacedURL = regex.sub(regexSingleParam, FUZZ_PLACE_HOLDER, url, flags=regex.IGNORECASE)
+        matchedElem = regex.search(regexSingleParam, url, regex.IGNORECASE)
+    else:
+        matchedElem = regex.search(regexMultipleParams, url, regex.IGNORECASE)
+
+    if matchedElem:
+        matchedElem = matchedElem.group()
+
+    return replacedURL, matchedElem
+
 def fuzz_SSRF(url):
 
-    matching = regex.search(regexSingleParam, url, regex.IGNORECASE)
-    matchedElem = matching if matching else regex.search(regexMultipleParams, url, regex.IGNORECASE)
-    if not matchedElem:
+    replacedURL, matchedElem = prepare_url_with_regex(url)
+
+    if not matchedElem: #No relevant parameter matching
         return
-    matchedElem = matchedElem.group()
-    host = smart_extract_host(url , matchedElem)
 
     if args.oneshot:
         payloadsList = [f"http://{interactionServer}"]
     else:
+        host = smart_extract_host(url, matchedElem)
         payloadsList = generatePayloads(host, interactionServer)
-    url = url.replace(matchedElem, FUZZ_PLACE_HOLDER)
 
     if args.verbose:
         print(f" + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +")
-        print(f"Starting fuzzing {url}")
+        print(f"Starting fuzzing {replacedURL}")
 
     for payload in payloadsList:
-        fuzz_and_detect_with_payload("FUZZ", url, payload)
+        fuzz_and_detect_with_payload("FUZZ", replacedURL, payload)
 
     time.sleep(2)
 
     if isInteractionDetected():
         if args.verbose:
-            print(f"\nSSRF identified in {url}. Determining valid payload ...")
+            print(f"\nSSRF identified in {replacedURL}. Determining valid payload ...")
         for payload in payloadsList:
-            if fuzz_and_detect_with_payload("DETECT", url, payload):
-                print(f"SSRF detected in {url} with payload {payload}.")
-                outputFile.write(f"SSRF detected in {url} with payload {payload}\n")
+            if fuzz_and_detect_with_payload("DETECT", replacedURL, payload):
+                print(f"SSRF detected in {replacedURL} with payload {payload}.")
+                outputFile.write(f"SSRF detected in {replacedURL} with payload {payload}\n")
                 return
     else:
         if args.verbose:
@@ -112,7 +136,7 @@ def fuzz_and_detect_with_payload(type ,url, payload) :
     fuzzedUrl = url.replace(FUZZ_PLACE_HOLDER, payload)
     if args.verbose:
         print(f"Testing payload: {payload}                                                          ", end="\r")
-    requests.get(fuzzedUrl)
+    requests.get(fuzzedUrl, timeout=TIMEOUT_DELAY)
     if type == "DETECT":
         time.sleep(2)
         return isInteractionDetected()
@@ -142,7 +166,12 @@ def main():
         for url in targetURLS:
             try:
                 fuzz_SSRF(url)
-            except:
-                continue
+            except requests.exceptions.Timeout:
+                exception_verbose_message("timeout")
+            except requests.exceptions.TooManyRedirects:
+                exception_verbose_message("redirects")
+            except requests.exceptions.RequestException:
+                exception_verbose_message("others")
+
         targetURLS.close()
 main()
