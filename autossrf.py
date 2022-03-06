@@ -177,4 +177,7 @@ def main():
                 exception_verbose_message("others")
 
         targetURLS.close()
-main()
+
+
+if __name__ == '__main__':
+    main()
