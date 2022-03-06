@@ -4,6 +4,9 @@ import requests
 import time
 import os
 
+currentPath = os.path.dirname(__file__)
+os.chdir(currentPath)
+
 FUZZ_PLACE_HOLDER = '??????'
 TIMEOUT_DELAY = 1.75
 
