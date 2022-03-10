@@ -3,16 +3,20 @@ import argparse
 import requests
 import time
 import os
+import threading
+import random
 
 currentPath = os.path.dirname(__file__)
 os.chdir(currentPath)
 
 FUZZ_PLACE_HOLDER = '??????'
 TIMEOUT_DELAY = 1.75
+LOCK = threading.Lock()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--file", "-f", type=str, required=False, help= 'file of all URLs to be tested against SSRF')
 parser.add_argument("--url", "-u", type=str, required=False, help= 'url to be tested against SSRF')
+parser.add_argument("--threads", "-n", type=int, required=False, help= 'number of threads for the tool')
 parser.add_argument("--output", "-o", action='store_true', help='output file path')
 parser.add_argument("--oneshot", "-t", action='store_true', help='fuzz with only one basic payload - to be activated in case of time constraints')
 parser.add_argument("--verbose", "-v", action='store_true', help='activate verbose mode')
@@ -26,27 +30,44 @@ if not (args.file or args.url):
 if not os.path.isdir('output'):
     os.system("mkdir output")
 
+if not os.path.isdir('output/threadsLogs'):
+    os.system("mkdir output/threadsLogs")
+else:
+    os.system("rm -r output/threadsLogs")
+    os.system("mkdir output/threadsLogs")
+
 if args.output:
     outputFile = open(args.output, "a")
 else:
     outputFile = open("output/ssrf-result.txt", "a")
 
+if args.file :
+    allURLs = [line.replace('\n', '') for line in open(args.file, "r")]
+
 regexMultipleParams = '(?<=(access|admin|dbg|debug|edit|grant|test|alter|clone|create|delete|disable|enable|exec|execute|load|make|modify|rename|reset|shell|toggle|adm|root|cfg|dest|redirect|uri|path|continue|url|window|next|data|reference|site|html|val|validate|domain|callback|return|page|feed|host|port|to|out|view|dir|show|navigation|open|file|document|folder|pg|php_path|style|doc|img|filename)=)(.*)(?=&)'
 
 regexSingleParam = '(?<=(access|admin|dbg|debug|edit|grant|test|alter|clone|create|delete|disable|enable|exec|execute|load|make|modify|rename|reset|shell|toggle|adm|root|cfg|dest|redirect|uri|path|continue|url|window|next|data|reference|site|html|val|validate|domain|callback|return|page|feed|host|port|to|out|view|dir|show|navigation|open|file|document|folder|pg|php_path|style|doc|img|filename)=)(.*)'
 
-os.system("./tools/interactsh-client -pi 1 &> output/interaction-logs.txt &")
-time.sleep(3)
 
 extractInteractionServerURL = "(?<=] )([a-z0-9][a-z0-9][a-z0-9].*)"
 
-#Extract out-of-band host from Interactsh output
 
-interactionLogs = open("output/interaction-logs.txt", "r")
-fileContent = interactionLogs.read()
-pastInteractionLogsSize = len(fileContent)
-interactionServer = regex.search(extractInteractionServerURL, fileContent).group()
-interactionLogs.close()
+def getFileSize(fileID):
+    interactionLogs = open(f"output/threadsLogs/interaction-logs{fileID}.txt", "r")
+    return len(interactionLogs.read())
+
+def getInteractionServer():
+
+    id = random.randint(0,999999)
+    os.system(f"./tools/interactsh-client -pi 1 &> output/threadsLogs/interaction-logs{id}.txt &")
+    time.sleep(3)
+    interactionLogs = open(f"output/threadsLogs/interaction-logs{id}.txt", "r")
+    fileContent = interactionLogs.read()
+    pastInteractionLogsSize = len(fileContent)
+    interactionServer = regex.search(extractInteractionServerURL, fileContent).group()
+    interactionLogs.close()
+
+    return interactionServer, id
 
 
 def exception_verbose_message(exceptionType):
@@ -57,6 +78,29 @@ def exception_verbose_message(exceptionType):
             print("\nToo many redirects... URL skipped")
         elif exceptionType == "others":
             print("\nRequest error... URL skipped")
+
+def splitURLS(threadsSize): #Multithreading
+
+    splitted = []
+    URLSsize = len(allURLs)
+    width = int(URLSsize/threadsSize)
+    if width == 0:
+        width = 1
+    endVal = 0
+    i = 0
+    while endVal != URLSsize:
+        if URLSsize <= i + 2 * width:
+            if len(splitted) == threadsSize - 2:
+                endVal = int(i + (URLSsize - i)/2)
+            else:
+                endVal = URLSsize
+        else:
+            endVal = i + width
+
+        splitted.append(allURLs[i: endVal])
+        i += width
+
+    return splitted
 
 
 def generatePayloads(whitelistedHost, interactionHost):
@@ -101,7 +145,9 @@ def prepare_url_with_regex(url):
 
     return replacedURL, matchedElem
 
-def fuzz_SSRF(url):
+def fuzz_SSRF(url, interactionServer, fileID):
+
+    pastInteractionLogsSize = getFileSize(fileID)
 
     replacedURL, matchedElem = prepare_url_with_regex(url)
 
@@ -115,46 +161,60 @@ def fuzz_SSRF(url):
         payloadsList = generatePayloads(host, interactionServer)
 
     if args.verbose:
-        print(f" + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +")
-        print(f"Starting fuzzing {replacedURL}")
+        if not args.threads:
+            print(f" + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +")
+        print(f"\nStarting fuzzing {replacedURL}")
 
     for payload in payloadsList:
-        fuzz_and_detect_with_payload("FUZZ", replacedURL, payload)
+        fuzz_and_detect_with_payload("FUZZ", replacedURL, payload, fileID)
 
     time.sleep(2)
-
-    if isInteractionDetected():
+    if isInteractionDetected(pastInteractionLogsSize, fileID):
         if args.verbose:
             print(f"\nSSRF identified in {replacedURL}. Determining valid payload ...")
         for payload in payloadsList:
-            if fuzz_and_detect_with_payload("DETECT", replacedURL, payload):
+            if fuzz_and_detect_with_payload("DETECT", replacedURL, payload, fileID):
                 print(f"SSRF detected in {replacedURL} with payload {payload}.")
-                outputFile.write(f"SSRF detected in {replacedURL} with payload {payload}\n")
+                with LOCK:
+                    outputFile.write(f"SSRF detected in {replacedURL} with payload {payload}\n")
                 return
     else:
         if args.verbose:
-            print("\nNothing detected for the given URL.")
+            print(f"\nNothing detected for {replacedURL}")
 
-def fuzz_and_detect_with_payload(type ,url, payload) :
+def fuzz_and_detect_with_payload(type ,url, payload, fileID):
+    pastInteractionLogsSize = getFileSize(fileID)
+
     fuzzedUrl = url.replace(FUZZ_PLACE_HOLDER, payload)
     if args.verbose:
-        print(f"Testing payload: {payload}                                                          ", end="\r")
+        if not args.threads:
+            print(f"Testing payload: {payload}                                                          ", end="\r")
     requests.get(fuzzedUrl, timeout=TIMEOUT_DELAY)
     if type == "DETECT":
         time.sleep(2)
-        return isInteractionDetected()
+        return isInteractionDetected(pastInteractionLogsSize, fileID)
 
-def isInteractionDetected():
-    global pastInteractionLogsSize
-    currentInteractionLogs = open("output/interaction-logs.txt", "r")
-    currentInteractionLogsSize = len(currentInteractionLogs.read())
-    currentInteractionLogs.close()
+def isInteractionDetected(pastInteractionLogsSize, fileID):
+    currentInteractionLogsSize = getFileSize(fileID)
 
     if currentInteractionLogsSize != pastInteractionLogsSize:
-        pastInteractionLogsSize = currentInteractionLogsSize
         return True
 
     return False
+
+def sequential_url_scan(urlList):
+
+    interactionServer, fileID = getInteractionServer()
+
+    for url in urlList:
+        try:
+            fuzz_SSRF(url, interactionServer, fileID)
+        except requests.exceptions.Timeout:
+            exception_verbose_message("timeout")
+        except requests.exceptions.TooManyRedirects:
+            exception_verbose_message("redirects")
+        except requests.exceptions.RequestException:
+            exception_verbose_message("others")
 
 def main():
     if args.url:
@@ -164,19 +224,18 @@ def main():
             print("\nInvalid URL")
     elif args.file:
 
-        targetURLS = open(args.file, "r")
+        if not args.threads or args.threads == 1:
+            sequential_url_scan(allURLs)
 
-        for url in targetURLS:
-            try:
-                fuzz_SSRF(url)
-            except requests.exceptions.Timeout:
-                exception_verbose_message("timeout")
-            except requests.exceptions.TooManyRedirects:
-                exception_verbose_message("redirects")
-            except requests.exceptions.RequestException:
-                exception_verbose_message("others")
-
-        targetURLS.close()
+        else:
+            workingThreads = []
+            split = splitURLS(args.threads)
+            for subList in split:
+                t = threading.Thread(target=sequential_url_scan, args=[subList])
+                t.start()
+                workingThreads.append(t)
+            for thread in workingThreads:
+                thread.join()
 
 
 if __name__ == '__main__':
