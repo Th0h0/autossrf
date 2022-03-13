@@ -65,7 +65,6 @@ def getInteractionServer():
     fileContent = interactionLogs.read()
     pastInteractionLogsSize = len(fileContent)
     interactionServer = regex.search(extractInteractionServerURL, fileContent).group()
-    interactionLogs.close()
 
     return interactionServer, id
 
@@ -236,6 +235,7 @@ def main():
                 workingThreads.append(t)
             for thread in workingThreads:
                 thread.join()
+    outputFile.close()
 
 
 if __name__ == '__main__':
