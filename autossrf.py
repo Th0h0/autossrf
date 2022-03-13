@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--file", "-f", type=str, required=False, help= 'file of all URLs to be tested against SSRF')
 parser.add_argument("--url", "-u", type=str, required=False, help= 'url to be tested against SSRF')
 parser.add_argument("--threads", "-n", type=int, required=False, help= 'number of threads for the tool')
-parser.add_argument("--output", "-o", action='store_true', help='output file path')
+parser.add_argument("--output", "-o", type=str, required=False, help='output file path')
 parser.add_argument("--oneshot", "-t", action='store_true', help='fuzz with only one basic payload - to be activated in case of time constraints')
 parser.add_argument("--verbose", "-v", action='store_true', help='activate verbose mode')
 
