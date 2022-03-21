@@ -10,7 +10,7 @@ currentPath = os.path.dirname(__file__)
 os.chdir(currentPath)
 
 FUZZ_PLACE_HOLDER = '??????'
-TIMEOUT_DELAY = 1.75
+TIMEOUT_DELAY = 3.3
 LOCK = threading.Lock()
 
 parser = argparse.ArgumentParser()
@@ -44,13 +44,9 @@ else:
 if args.file :
     allURLs = [line.replace('\n', '') for line in open(args.file, "r")]
 
-regexMultipleParams = '(?<=(access|admin|dbg|debug|edit|grant|test|alter|clone|create|delete|disable|enable|exec|execute|load|make|modify|rename|reset|shell|toggle|adm|root|cfg|dest|redirect|uri|path|continue|url|window|next|data|reference|site|html|val|validate|domain|callback|return|page|feed|host|port|to|out|view|dir|show|navigation|open|file|document|folder|pg|php_path|style|doc|img|filename)=)(.*)(?=&)'
-
-regexSingleParam = '(?<=(access|admin|dbg|debug|edit|grant|test|alter|clone|create|delete|disable|enable|exec|execute|load|make|modify|rename|reset|shell|toggle|adm|root|cfg|dest|redirect|uri|path|continue|url|window|next|data|reference|site|html|val|validate|domain|callback|return|page|feed|host|port|to|out|view|dir|show|navigation|open|file|document|folder|pg|php_path|style|doc|img|filename)=)(.*)'
-
+regexParams = regex.compile('(?<=(access|dbg|debug|edit|grant|clone|exec|execute|load|make|modify|reset|shell|toggle|adm|root|cfg|dest|redirect|uri|path|continue|url|window|next|data|site|html|validate|domain|callback|return|host|port|to|out|view|dir|show|navigation|open|file|document|folder|pg|php_path|doc|img|filename|file_name|image)=)(.*)(?=(&|$))', flags=regex.IGNORECASE)
 
 extractInteractionServerURL = "(?<=] )([a-z0-9][a-z0-9][a-z0-9].*)"
-
 
 def getFileSize(fileID):
     interactionLogs = open(f"output/threadsLogs/interaction-logs{fileID}.txt", "r")
@@ -58,13 +54,15 @@ def getFileSize(fileID):
 
 def getInteractionServer():
 
-    id = random.randint(0,999999)
+    id = random.randint(0, 999999)
     os.system(f"./tools/interactsh-client -pi 1 &> output/threadsLogs/interaction-logs{id}.txt &")
     time.sleep(3)
     interactionLogs = open(f"output/threadsLogs/interaction-logs{id}.txt", "r")
     fileContent = interactionLogs.read()
     pastInteractionLogsSize = len(fileContent)
     interactionServer = regex.search(extractInteractionServerURL, fileContent).group()
+
+    time.sleep(2)
 
     return interactionServer, id
 
@@ -132,12 +130,8 @@ def smart_extract_host(url, matchedElement):
 
 def prepare_url_with_regex(url):
 
-    replacedURL = regex.sub(regexMultipleParams, FUZZ_PLACE_HOLDER, url, flags=regex.IGNORECASE)
-    if replacedURL == url: #If no match with multiparam regex
-        replacedURL = regex.sub(regexSingleParam, FUZZ_PLACE_HOLDER, url, flags=regex.IGNORECASE)
-        matchedElem = regex.search(regexSingleParam, url, regex.IGNORECASE)
-    else:
-        matchedElem = regex.search(regexMultipleParams, url, regex.IGNORECASE)
+    replacedURL = regexParams.sub(FUZZ_PLACE_HOLDER, url)
+    matchedElem = regexParams.search(url)
 
     if matchedElem:
         matchedElem = matchedElem.group()
@@ -218,8 +212,8 @@ def sequential_url_scan(urlList):
 def main():
     if args.url:
         try:
-            fuzz_SSRF(args.url)
-        except:
+            sequential_url_scan([args.url])
+        except Exception as e:
             print("\nInvalid URL")
     elif args.file:
 
