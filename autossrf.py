@@ -56,13 +56,11 @@ def getInteractionServer():
 
     id = random.randint(0, 999999)
     os.system(f"./tools/interactsh-client -pi 1 &> output/threadsLogs/interaction-logs{id}.txt &")
-    time.sleep(3)
+    time.sleep(5)
     interactionLogs = open(f"output/threadsLogs/interaction-logs{id}.txt", "r")
     fileContent = interactionLogs.read()
     pastInteractionLogsSize = len(fileContent)
     interactionServer = regex.search(extractInteractionServerURL, fileContent).group()
-
-    time.sleep(2)
 
     return interactionServer, id
 
@@ -206,7 +204,8 @@ def sequential_url_scan(urlList):
             exception_verbose_message("timeout")
         except requests.exceptions.TooManyRedirects:
             exception_verbose_message("redirects")
-        except requests.exceptions.RequestException:
+        except Exception as e: #requests.exceptions.RequestException:
+            print(f"{url} : {e}")
             exception_verbose_message("others")
 
 def main():
