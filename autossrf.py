@@ -6,6 +6,7 @@ import os
 import threading
 import random
 
+execPath = os.getcwd()
 currentPath = os.path.dirname(__file__)
 os.chdir(currentPath)
 
@@ -37,12 +38,12 @@ else:
     os.system("mkdir output/threadsLogs")
 
 if args.output:
-    outputFile = open(args.output, "a")
+    outputFile = open(f"{execPath}/{args.output}", "a")
 else:
     outputFile = open("output/ssrf-result.txt", "a")
 
-if args.file :
-    allURLs = [line.replace('\n', '') for line in open(args.file, "r")]
+if args.file:
+    allURLs = [line.replace('\n', '') for line in open(f"{execPath}/{args.file}", "r")]
 
 regexParams = regex.compile('(?<=(access|dbg|debug|edit|grant|clone|exec|execute|load|make|modify|reset|shell|toggle|adm|root|cfg|dest|redirect|uri|path|continue|url|window|next|data|site|html|validate|domain|callback|return|host|port|to|out|view|dir|show|navigation|open|file|document|folder|pg|php_path|doc|img|filename|file_name|image)=)(.*)(?=(&|$))', flags=regex.IGNORECASE)
 
