@@ -56,7 +56,7 @@ def getFileSize(fileID):
 def getInteractionServer():
 
     id = random.randint(0, 999999)
-    os.system(f"./tools/interactsh-client -pi 1 &> output/threadsLogs/interaction-logs{id}.txt &")
+    os.system(f"interactsh-client -pi 1 &> output/threadsLogs/interaction-logs{id}.txt &")
     time.sleep(5)
     interactionLogs = open(f"output/threadsLogs/interaction-logs{id}.txt", "r")
     fileContent = interactionLogs.read()
