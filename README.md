@@ -66,7 +66,7 @@ pip install -r requirements.txt
 ```
 Interactsh-Client :
 ```bash
-go install -v github.com/projectdiscovery/interactsh/cmd/interactsh-server@latest
+go install -v github.com/projectdiscovery/interactsh/cmd/interactsh-client@latest
 ```
 
 
