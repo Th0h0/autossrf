@@ -12,7 +12,7 @@ os.chdir(currentPath)
 
 FUZZ_PLACE_HOLDER = '??????'
 TIMEOUT_DELAY = 3.3
-LOCK = threading.Lock()
+LOCK = threading.Condition()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--file", "-f", type=str, required=False, help= 'file of all URLs to be tested against SSRF')
@@ -57,11 +57,16 @@ def getInteractionServer():
 
     id = random.randint(0, 999999)
     os.system(f"interactsh-client -pi 1 &> output/threadsLogs/interaction-logs{id}.txt &")
-    time.sleep(5)
-    interactionLogs = open(f"output/threadsLogs/interaction-logs{id}.txt", "r")
-    fileContent = interactionLogs.read()
-    pastInteractionLogsSize = len(fileContent)
-    interactionServer = regex.search(extractInteractionServerURL, fileContent).group()
+    time.sleep(2)
+    interactionServer = None
+    while not interactionServer:
+        interactionLogs = open(f"output/threadsLogs/interaction-logs{id}.txt", "r")
+        fileContent = interactionLogs.read()
+        pastInteractionLogsSize = len(fileContent)
+        interactionServer = regex.search(extractInteractionServerURL, fileContent)
+        time.sleep(2)
+
+    interactionServer = interactionServer.group()
 
     return interactionServer, id
 
@@ -167,8 +172,9 @@ def fuzz_SSRF(url, interactionServer, fileID):
         for payload in payloadsList:
             if fuzz_and_detect_with_payload("DETECT", replacedURL, payload, fileID):
                 print(f"SSRF detected in {replacedURL} with payload {payload}.")
-                with LOCK:
-                    outputFile.write(f"SSRF detected in {replacedURL} with payload {payload}\n")
+                LOCK.acquire()
+                outputFile.write(f"SSRF detected in {replacedURL} with payload {payload}\n")
+                LOCK.release()
                 return
     else:
         if args.verbose:
