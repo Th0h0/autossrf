@@ -11,8 +11,8 @@ currentPath = os.path.dirname(__file__)
 os.chdir(currentPath)
 
 FUZZ_PLACE_HOLDER = '??????'
-TIMEOUT_DELAY = 3.3
-LOCK = threading.Condition()
+TIMEOUT_DELAY = 5
+LOCK = threading.Lock()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--file", "-f", type=str, required=False, help= 'file of all URLs to be tested against SSRF')
@@ -172,9 +172,8 @@ def fuzz_SSRF(url, interactionServer, fileID):
         for payload in payloadsList:
             if fuzz_and_detect_with_payload("DETECT", replacedURL, payload, fileID):
                 print(f"SSRF detected in {replacedURL} with payload {payload}.")
-                LOCK.acquire()
-                outputFile.write(f"SSRF detected in {replacedURL} with payload {payload}\n")
-                LOCK.release()
+                with LOCK:
+                    outputFile.write(f"SSRF detected in {replacedURL} with payload {payload}\n")
                 return
     else:
         if args.verbose:
