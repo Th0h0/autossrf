@@ -59,10 +59,16 @@ git clone https://github.com/Th0h0/autossrf.git
 
 2  - Install requirements
 
+Python libraries :
 ```bash
 cd autossrf 
 pip install -r requirements.txt
 ```
+Interactsh-Client :
+```bash
+go install -v github.com/projectdiscovery/interactsh/cmd/interactsh-client@latest
+```
+
 
 ---
 
