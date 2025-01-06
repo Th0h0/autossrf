@@ -7,7 +7,7 @@ import threading
 import random
 
 execPath = os.getcwd()
-currentPath = os.path.dirname(__file__)
+currentPath = os.path.dirname(os.path.abspath(__file__))
 os.chdir(currentPath)
 
 FUZZ_PLACE_HOLDER = '??????'
